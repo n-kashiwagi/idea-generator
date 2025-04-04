@@ -7,8 +7,31 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>アイデアジェネレーター</h1>
+    <!-- ログイン画面 -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-container">
+            <h1>アイデアジェネレーター</h1>
+            <div class="login-form">
+                <h2>ログイン</h2>
+                <div class="form-group">
+                    <label for="password">パスワード</label>
+                    <input type="password" id="password" class="login-input" placeholder="パスワードを入力してください">
+                </div>
+                <button id="loginButton" class="login-btn">ログイン</button>
+                <div id="loginError" class="login-error"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- メインアプリケーション画面 -->
+    <div id="appScreen" class="container hidden">
+        <div class="header">
+            <h1>アイデアジェネレーター</h1>
+            <div class="admin-controls">
+                <button id="wordManageButton" class="admin-btn">単語管理</button>
+                <button id="logoutButton" class="admin-btn">ログアウト</button>
+            </div>
+        </div>
         
         <div class="idea-generator">
             <div class="word-selection">
@@ -51,6 +74,37 @@
                 <div id="willWords" class="word-list"></div>
                 <div id="mustWords" class="word-list hidden"></div>
                 <div id="pestWords" class="word-list hidden"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 単語管理モーダル -->
+    <div id="wordManageModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>単語管理</h2>
+                <span id="closeModal" class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="word-manage-tabs">
+                    <div class="tab active" data-manage-category="Will">Will</div>
+                    <div class="tab" data-manage-category="Must">Must</div>
+                    <div class="tab" data-manage-category="PEST">PEST</div>
+                </div>
+                
+                <div class="word-manage-container">
+                    <div id="manageWillWords" class="word-manage-list"></div>
+                    <div id="manageMustWords" class="word-manage-list hidden"></div>
+                    <div id="managePestWords" class="word-manage-list hidden"></div>
+                </div>
+                
+                <div class="word-add-form">
+                    <input type="text" id="newWord" class="word-input" placeholder="新しい単語を入力">
+                    <button id="addWord" class="btn btn-add">追加</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="saveWords" class="btn btn-save">変更を保存</button>
             </div>
         </div>
     </div>

@@ -1,5 +1,25 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // DOM要素の取得
+    // DOM要素の取得 - ログイン関連
+    const loginScreen = document.getElementById('loginScreen');
+    const appScreen = document.getElementById('appScreen');
+    const passwordInput = document.getElementById('password');
+    const loginButton = document.getElementById('loginButton');
+    const loginError = document.getElementById('loginError');
+    const logoutButton = document.getElementById('logoutButton');
+    
+    // DOM要素の取得 - 単語管理関連
+    const wordManageButton = document.getElementById('wordManageButton');
+    const wordManageModal = document.getElementById('wordManageModal');
+    const closeModal = document.getElementById('closeModal');
+    const manageWillWords = document.getElementById('manageWillWords');
+    const manageMustWords = document.getElementById('manageMustWords');
+    const managePestWords = document.getElementById('managePestWords');
+    const wordManageTabs = document.querySelectorAll('.word-manage-tabs .tab');
+    const newWordInput = document.getElementById('newWord');
+    const addWordButton = document.getElementById('addWord');
+    const saveWordsButton = document.getElementById('saveWords');
+    
+    // DOM要素の取得 - アプリケーション関連
     const word1Element = document.getElementById('word1');
     const word2Element = document.getElementById('word2');
     const ideaInput = document.getElementById('ideaInput');
@@ -11,13 +31,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const willWordsList = document.getElementById('willWords');
     const mustWordsList = document.getElementById('mustWords');
     const pestWordsList = document.getElementById('pestWords');
-    const tabs = document.querySelectorAll('.tab');
+    const tabs = document.querySelectorAll('.tabs .tab');
     
     // データ保存用の変数
     let wordBank = {};
     let ideaBank = { ideas: [] };
     let selectedWord1 = null;
     let selectedWord2 = null;
+    let currentManageCategory = 'Will';
+    let isAuthenticated = false;
+    
+    // 正しいパスワード
+    const CORRECT_PASSWORD = 'sysidealink';
     
     // ステータスメッセージ表示用の要素を作成
     const statusMessageContainer = document.createElement('div');
@@ -25,9 +50,239 @@ document.addEventListener('DOMContentLoaded', function() {
     statusMessageContainer.style.display = 'none';
     document.querySelector('.idea-input-container').appendChild(statusMessageContainer);
     
-    // 単語帳とアイデア帳の読み込み
-    loadWordBank();
-    loadIdeaBank();
+    // 初期化
+    init();
+    
+    function init() {
+        // ログイン状態の確認
+        checkAuthStatus();
+        
+        // イベントリスナーの設定
+        setupEventListeners();
+    }
+    
+    // ログイン状態の確認
+    function checkAuthStatus() {
+        // セッションストレージからログイン状態を取得
+        isAuthenticated = sessionStorage.getItem('isAuthenticated') === 'true';
+        
+        if (isAuthenticated) {
+            showApp();
+            loadWordBank();
+            loadIdeaBank();
+        } else {
+            showLogin();
+        }
+    }
+    
+    // イベントリスナーの設定
+    function setupEventListeners() {
+        // ログイン関連
+        loginButton.addEventListener('click', handleLogin);
+        passwordInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                handleLogin();
+            }
+        });
+        logoutButton.addEventListener('click', handleLogout);
+        
+        // 単語管理関連
+        wordManageButton.addEventListener('click', openWordManageModal);
+        closeModal.addEventListener('click', closeWordManageModal);
+        wordManageTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                currentManageCategory = tab.dataset.manageCategory;
+                displayManageWordsByCategory(currentManageCategory);
+            });
+        });
+        addWordButton.addEventListener('click', addNewWord);
+        saveWordsButton.addEventListener('click', saveWordBank);
+        
+        // アプリケーション関連
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                displayWordsByCategory(tab.dataset.category);
+            });
+        });
+        random1Button.addEventListener('click', () => selectRandomWord(1));
+        random2Button.addEventListener('click', () => selectRandomWord(2));
+        clear1Button.addEventListener('click', () => clearWord(1));
+        clear2Button.addEventListener('click', () => clearWord(2));
+        saveButton.addEventListener('click', saveIdea);
+    }
+    
+    // ログイン処理
+    function handleLogin() {
+        const password = passwordInput.value;
+        
+        if (password === CORRECT_PASSWORD) {
+            // ログイン成功
+            isAuthenticated = true;
+            sessionStorage.setItem('isAuthenticated', 'true');
+            loginError.textContent = '';
+            passwordInput.value = '';
+            showApp();
+            loadWordBank();
+            loadIdeaBank();
+        } else {
+            // ログイン失敗
+            loginError.textContent = 'パスワードが正しくありません';
+            passwordInput.value = '';
+        }
+    }
+    
+    // ログアウト処理
+    function handleLogout() {
+        isAuthenticated = false;
+        sessionStorage.removeItem('isAuthenticated');
+        showLogin();
+    }
+    
+    // ログイン画面を表示
+    function showLogin() {
+        loginScreen.classList.remove('hidden');
+        appScreen.classList.add('hidden');
+    }
+    
+    // アプリケーション画面を表示
+    function showApp() {
+        loginScreen.classList.add('hidden');
+        appScreen.classList.remove('hidden');
+    }
+    
+    // 単語管理モーダルを開く
+    function openWordManageModal() {
+        displayManageWordsByCategory('Will');
+        wordManageModal.classList.remove('hidden');
+    }
+    
+    // 単語管理モーダルを閉じる
+    function closeWordManageModal() {
+        wordManageModal.classList.add('hidden');
+    }
+    
+    // 単語管理画面に単語を表示
+    function displayManageWordsByCategory(category) {
+        // タブの切り替え
+        wordManageTabs.forEach(tab => {
+            if (tab.dataset.manageCategory === category) {
+                tab.classList.add('active');
+            } else {
+                tab.classList.remove('active');
+            }
+        });
+        
+        // 単語リストの切り替え
+        manageWillWords.classList.add('hidden');
+        manageMustWords.classList.add('hidden');
+        managePestWords.classList.add('hidden');
+        
+        let wordList;
+        switch(category) {
+            case 'Will':
+                wordList = manageWillWords;
+                break;
+            case 'Must':
+                wordList = manageMustWords;
+                break;
+            case 'PEST':
+                wordList = managePestWords;
+                break;
+        }
+        
+        // 単語リストをクリア
+        wordList.innerHTML = '';
+        
+        // 単語を追加
+        if (wordBank[category]) {
+            wordBank[category].forEach(word => {
+                const wordItem = document.createElement('div');
+                wordItem.className = 'word-manage-item';
+                
+                const wordText = document.createElement('span');
+                wordText.textContent = word;
+                
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'delete-word';
+                deleteButton.textContent = '×';
+                deleteButton.addEventListener('click', () => deleteWord(category, word));
+                
+                wordItem.appendChild(wordText);
+                wordItem.appendChild(deleteButton);
+                wordList.appendChild(wordItem);
+            });
+        }
+        
+        wordList.classList.remove('hidden');
+        currentManageCategory = category;
+    }
+    
+    // 新しい単語を追加
+    function addNewWord() {
+        const newWord = newWordInput.value.trim();
+        
+        if (!newWord) {
+            return;
+        }
+        
+        // 既に存在する単語かチェック
+        if (wordBank[currentManageCategory] && wordBank[currentManageCategory].includes(newWord)) {
+            showStatusMessage('この単語は既に存在します', false);
+            return;
+        }
+        
+        // 単語を追加
+        if (!wordBank[currentManageCategory]) {
+            wordBank[currentManageCategory] = [];
+        }
+        
+        wordBank[currentManageCategory].push(newWord);
+        
+        // 単語リストを更新
+        displayManageWordsByCategory(currentManageCategory);
+        
+        // 入力フィールドをクリア
+        newWordInput.value = '';
+    }
+    
+    // 単語を削除
+    function deleteWord(category, word) {
+        if (wordBank[category]) {
+            const index = wordBank[category].indexOf(word);
+            if (index !== -1) {
+                wordBank[category].splice(index, 1);
+                displayManageWordsByCategory(category);
+            }
+        }
+    }
+    
+    // 単語帳を保存
+    function saveWordBank() {
+        fetch('/api/save-words', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(wordBank)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('サーバーエラー: ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            showStatusMessage('単語帳が保存されました！', true);
+            closeWordManageModal();
+            
+            // メイン画面の単語リストを更新
+            displayWordsByCategory(document.querySelector('.tabs .tab.active').dataset.category);
+        })
+        .catch(error => {
+            console.error('保存エラー:', error);
+            showStatusMessage('単語帳の保存に失敗しました', false);
+        });
+    }
     
     // 単語帳の読み込み
     function loadWordBank() {
@@ -289,24 +544,4 @@ document.addEventListener('DOMContentLoaded', function() {
             saveButton.disabled = false;
         });
     }
-    
-    // イベントリスナーの設定
-    
-    // タブ切り替え
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            displayWordsByCategory(tab.dataset.category);
-        });
-    });
-    
-    // ランダムボタン
-    random1Button.addEventListener('click', () => selectRandomWord(1));
-    random2Button.addEventListener('click', () => selectRandomWord(2));
-    
-    // 解除ボタン
-    clear1Button.addEventListener('click', () => clearWord(1));
-    clear2Button.addEventListener('click', () => clearWord(2));
-    
-    // 保存ボタン
-    saveButton.addEventListener('click', saveIdea);
 });
