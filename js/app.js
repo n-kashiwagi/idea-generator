@@ -33,6 +33,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const pestWordsList = document.getElementById('pestWords');
     const tabs = document.querySelectorAll('.tabs .tab');
     
+    // DOM要素の取得 - ダウンロード関連
+    const downloadIdeasButton = document.getElementById('downloadIdeasButton');
+    
     // データ保存用の変数
     let wordBank = {};
     let ideaBank = { ideas: [] };
@@ -109,6 +112,9 @@ document.addEventListener('DOMContentLoaded', function() {
         clear1Button.addEventListener('click', () => clearWord(1));
         clear2Button.addEventListener('click', () => clearWord(2));
         saveButton.addEventListener('click', saveIdea);
+        
+        // ダウンロード関連
+        downloadIdeasButton.addEventListener('click', downloadIdeaBank);
     }
     
     // ログイン処理
@@ -279,57 +285,204 @@ document.addEventListener('DOMContentLoaded', function() {
             displayWordsByCategory(document.querySelector('.tabs .tab.active').dataset.category);
         })
         .catch(error => {
-            console.error('保存エラー:', error);
-            showStatusMessage('単語帳の保存に失敗しました', false);
+            console.error('単語帳保存エラー:', error);
+            showStatusMessage('単語帳の保存に失敗しました。ローカルストレージに保存します。', false);
+            
+            // エラー時はローカルストレージに保存
+            localStorage.setItem('wordBank', JSON.stringify(wordBank));
+            closeWordManageModal();
+            
+            // メイン画面の単語リストを更新
+            displayWordsByCategory(document.querySelector('.tabs .tab.active').dataset.category);
         });
     }
     
-    // 単語帳の読み込み
+    // 単語帳を読み込み
     function loadWordBank() {
-        fetch('data/word_bank.json')
-            .then(response => response.json())
-            .then(data => {
-                wordBank = data;
-                displayWordsByCategory('Will');
-            })
-            .catch(error => {
-                console.error('単語帳の読み込みエラー:', error);
-                showStatusMessage('単語帳の読み込みに失敗しました。', false);
-            });
+        fetch('/data/word_bank.json')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('サーバーエラー: ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            wordBank = data;
+            
+            // ローカルストレージの単語帳と同期
+            const localWordBank = localStorage.getItem('wordBank');
+            if (localWordBank) {
+                try {
+                    const parsedLocalWordBank = JSON.parse(localWordBank);
+                    
+                    // サーバーデータとローカルデータをマージ
+                    for (const category in parsedLocalWordBank) {
+                        if (!wordBank[category]) {
+                            wordBank[category] = [];
+                        }
+                        
+                        parsedLocalWordBank[category].forEach(word => {
+                            if (!wordBank[category].includes(word)) {
+                                wordBank[category].push(word);
+                            }
+                        });
+                    }
+                    
+                    // マージしたデータをサーバーに保存
+                    saveWordBank();
+                } catch (e) {
+                    console.error('ローカルストレージの単語帳の解析エラー:', e);
+                }
+            }
+            
+            // メイン画面の単語リストを更新
+            displayWordsByCategory('Will');
+        })
+        .catch(error => {
+            console.error('単語帳読み込みエラー:', error);
+            
+            // エラー時はローカルストレージから読み込み
+            const localWordBank = localStorage.getItem('wordBank');
+            if (localWordBank) {
+                try {
+                    wordBank = JSON.parse(localWordBank);
+                } catch (e) {
+                    console.error('ローカルストレージの単語帳の解析エラー:', e);
+                    wordBank = {
+                        'Will': ['自動化', 'AI', 'ロボット', 'IoT', 'ブロックチェーン', 'VR', 'AR', 'クラウド', '5G', '量子コンピュータ'],
+                        'Must': ['品質向上', 'コスト削減', '効率化', '安全性', '持続可能性', '顧客満足', '従業員満足', 'コンプライアンス', 'リスク管理', 'イノベーション'],
+                        'PEST': ['パンデミック', '気候変動', '高齢化', 'グローバル化', 'デジタル化', '規制強化', '資源枯渇', '格差拡大', '都市化', '地政学的リスク']
+                    };
+                }
+            } else {
+                // デフォルトの単語帳
+                wordBank = {
+                    'Will': ['自動化', 'AI', 'ロボット', 'IoT', 'ブロックチェーン', 'VR', 'AR', 'クラウド', '5G', '量子コンピュータ'],
+                    'Must': ['品質向上', 'コスト削減', '効率化', '安全性', '持続可能性', '顧客満足', '従業員満足', 'コンプライアンス', 'リスク管理', 'イノベーション'],
+                    'PEST': ['パンデミック', '気候変動', '高齢化', 'グローバル化', 'デジタル化', '規制強化', '資源枯渇', '格差拡大', '都市化', '地政学的リスク']
+                };
+            }
+            
+            // メイン画面の単語リストを更新
+            displayWordsByCategory('Will');
+        });
     }
     
-    // アイデア帳の読み込み
+    // アイデア帳を読み込み
     function loadIdeaBank() {
-        fetch('data/idea_bank.json')
-            .then(response => response.json())
-            .then(data => {
-                ideaBank = data;
-            })
-            .catch(error => {
-                console.error('アイデア帳の読み込みエラー:', error);
-                showStatusMessage('アイデア帳の読み込みに失敗しました。', false);
-            });
+        fetch('/data/idea_bank.json')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('サーバーエラー: ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            ideaBank = data;
+            
+            // ローカルストレージのアイデア帳と同期
+            const localIdeaBank = localStorage.getItem('ideaBank');
+            if (localIdeaBank) {
+                try {
+                    const parsedLocalIdeaBank = JSON.parse(localIdeaBank);
+                    
+                    // サーバーデータとローカルデータをマージ
+                    parsedLocalIdeaBank.ideas.forEach(localIdea => {
+                        const exists = ideaBank.ideas.some(serverIdea => 
+                            (serverIdea.word1 === localIdea.word1 && serverIdea.word2 === localIdea.word2) ||
+                            (serverIdea.word1 === localIdea.word2 && serverIdea.word2 === localIdea.word1)
+                        );
+                        
+                        if (!exists) {
+                            ideaBank.ideas.push(localIdea);
+                        }
+                    });
+                    
+                    // マージしたデータをサーバーに保存
+                    saveIdeaBankToServer();
+                } catch (e) {
+                    console.error('ローカルストレージのアイデア帳の解析エラー:', e);
+                }
+            }
+            
+            // 選択されている単語があれば、対応するアイデアを表示
+            updateIdeaInput();
+        })
+        .catch(error => {
+            console.error('アイデア帳読み込みエラー:', error);
+            
+            // エラー時はローカルストレージから読み込み
+            const localIdeaBank = localStorage.getItem('ideaBank');
+            if (localIdeaBank) {
+                try {
+                    ideaBank = JSON.parse(localIdeaBank);
+                } catch (e) {
+                    console.error('ローカルストレージのアイデア帳の解析エラー:', e);
+                    ideaBank = { ideas: [] };
+                }
+            } else {
+                ideaBank = { ideas: [] };
+            }
+            
+            // 選択されている単語があれば、対応するアイデアを表示
+            updateIdeaInput();
+        });
     }
     
-    // ステータスメッセージの表示
-    function showStatusMessage(message, isSuccess) {
-        statusMessageContainer.textContent = message;
-        statusMessageContainer.className = isSuccess ? 'status-message status-success' : 'status-message status-error';
-        statusMessageContainer.style.display = 'block';
+    // アイデア帳をサーバーに保存
+    function saveIdeaBankToServer() {
+        fetch('/api/save-idea', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(ideaBank)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('サーバーエラー: ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('アイデア帳が保存されました');
+        })
+        .catch(error => {
+            console.error('アイデア帳保存エラー:', error);
+            // エラー時はローカルストレージに保存
+            localStorage.setItem('ideaBank', JSON.stringify(ideaBank));
+        });
+    }
+    
+    // アイデア帳をダウンロード
+    function downloadIdeaBank() {
+        // アイデア帳データをJSON文字列に変換
+        const ideaBankJSON = JSON.stringify(ideaBank, null, 2);
         
-        // 3秒後にメッセージを非表示
-        setTimeout(() => {
-            statusMessageContainer.style.display = 'none';
-        }, 3000);
+        // Blobオブジェクトを作成
+        const blob = new Blob([ideaBankJSON], { type: 'application/json' });
+        
+        // ダウンロード用のURLを作成
+        const url = URL.createObjectURL(blob);
+        
+        // ダウンロードリンクを作成
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'idea_bank.json';
+        
+        // リンクをクリック（ダウンロード開始）
+        document.body.appendChild(a);
+        a.click();
+        
+        // 不要になったリンクとURLを削除
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showStatusMessage('アイデア帳をダウンロードしました！', true);
     }
     
     // カテゴリ別に単語を表示
     function displayWordsByCategory(category) {
-        // すべての単語リストを非表示
-        document.querySelectorAll('.word-list').forEach(list => {
-            list.classList.add('hidden');
-        });
-        
         // タブの切り替え
         tabs.forEach(tab => {
             if (tab.dataset.category === category) {
@@ -339,7 +492,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        // 対応するカテゴリの単語リストを表示
+        // 単語リストの切り替え
+        willWordsList.classList.add('hidden');
+        mustWordsList.classList.add('hidden');
+        pestWordsList.classList.add('hidden');
+        
         let wordList;
         switch(category) {
             case 'Will':
@@ -367,95 +524,87 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
         
-        // 単語リストを表示
         wordList.classList.remove('hidden');
     }
     
-    // 単語の選択
+    // 単語を選択
     function selectWord(word) {
-        // 既に選択されている場合は何もしない
-        if (selectedWord1 === word || selectedWord2 === word) {
-            return;
-        }
-        
-        // 単語1が空いている場合
         if (!selectedWord1) {
             selectedWord1 = word;
             word1Element.textContent = word;
-        } 
-        // 単語2が空いている場合
-        else if (!selectedWord2) {
+            word1Element.classList.add('selected');
+        } else if (!selectedWord2 && word !== selectedWord1) {
             selectedWord2 = word;
             word2Element.textContent = word;
+            word2Element.classList.add('selected');
         }
         
-        // 入力フィールドの有効化状態を更新
-        updateInputState();
+        updateIdeaInput();
     }
     
     // ランダムに単語を選択
-    function selectRandomWord(wordSlot) {
-        // すべてのカテゴリの単語を一つの配列にまとめる
-        const allWords = [
-            ...wordBank.Will || [],
-            ...wordBank.Must || [],
-            ...wordBank.PEST || []
-        ];
+    function selectRandomWord(wordNum) {
+        // 現在選択されているカテゴリを取得
+        const activeCategory = document.querySelector('.tabs .tab.active').dataset.category;
         
-        if (allWords.length === 0) return;
+        if (!wordBank[activeCategory] || wordBank[activeCategory].length === 0) {
+            return;
+        }
         
         // 既に選択されている単語を除外
-        let availableWords = allWords.filter(word => {
-            if (wordSlot === 1) {
-                return word !== selectedWord2;
-            } else {
-                return word !== selectedWord1;
-            }
-        });
+        let availableWords = [...wordBank[activeCategory]];
+        if (wordNum === 1 && selectedWord2) {
+            availableWords = availableWords.filter(word => word !== selectedWord2);
+        } else if (wordNum === 2 && selectedWord1) {
+            availableWords = availableWords.filter(word => word !== selectedWord1);
+        }
         
-        if (availableWords.length === 0) return;
+        if (availableWords.length === 0) {
+            return;
+        }
         
         // ランダムに単語を選択
         const randomIndex = Math.floor(Math.random() * availableWords.length);
         const randomWord = availableWords[randomIndex];
         
-        // 選択した単語をセット
-        if (wordSlot === 1) {
+        if (wordNum === 1) {
             selectedWord1 = randomWord;
             word1Element.textContent = randomWord;
+            word1Element.classList.add('selected');
         } else {
             selectedWord2 = randomWord;
             word2Element.textContent = randomWord;
+            word2Element.classList.add('selected');
         }
         
-        // 入力フィールドの有効化状態を更新
-        updateInputState();
+        updateIdeaInput();
     }
     
-    // 単語の解除
-    function clearWord(wordSlot) {
-        if (wordSlot === 1) {
+    // 選択した単語をクリア
+    function clearWord(wordNum) {
+        if (wordNum === 1) {
             selectedWord1 = null;
             word1Element.textContent = '単語１';
+            word1Element.classList.remove('selected');
         } else {
             selectedWord2 = null;
             word2Element.textContent = '単語２';
+            word2Element.classList.remove('selected');
         }
         
-        // 入力フィールドの有効化状態を更新
-        updateInputState();
+        updateIdeaInput();
     }
     
-    // 入力フィールドの有効化状態を更新
-    function updateInputState() {
+    // アイデア入力欄を更新
+    function updateIdeaInput() {
         if (selectedWord1 && selectedWord2) {
             ideaInput.disabled = false;
             saveButton.disabled = false;
             
-            // 既存のアイデアを検索して表示
+            // 既存のアイデアがあるか検索
             const existingIdea = findExistingIdea();
             if (existingIdea) {
-                ideaInput.value = existingIdea;
+                ideaInput.value = existingIdea.idea;
             } else {
                 ideaInput.value = '';
             }
@@ -468,80 +617,53 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 既存のアイデアを検索
     function findExistingIdea() {
-        if (!selectedWord1 || !selectedWord2) return null;
-        
-        // 順不同で検索
-        const idea = ideaBank.ideas.find(idea => 
-            (idea.word1 === selectedWord1 && idea.word2 === selectedWord2) || 
-            (idea.word1 === selectedWord2 && idea.word2 === selectedWord1)
+        return ideaBank.ideas.find(item => 
+            (item.word1 === selectedWord1 && item.word2 === selectedWord2) ||
+            (item.word1 === selectedWord2 && item.word2 === selectedWord1)
         );
-        
-        return idea ? idea.content : null;
     }
     
-    // アイデアの保存
+    // アイデアを保存
     function saveIdea() {
-        if (!selectedWord1 || !selectedWord2 || !ideaInput.value.trim()) return;
-        
-        const ideaContent = ideaInput.value.trim();
-        
-        // 既存のアイデアを検索
-        const existingIdeaIndex = ideaBank.ideas.findIndex(idea => 
-            (idea.word1 === selectedWord1 && idea.word2 === selectedWord2) || 
-            (idea.word1 === selectedWord2 && idea.word2 === selectedWord1)
-        );
-        
-        // 既存のアイデアを更新または新しいアイデアを追加
-        if (existingIdeaIndex !== -1) {
-            ideaBank.ideas[existingIdeaIndex].content = ideaContent;
-        } else {
-            ideaBank.ideas.push({
-                word1: selectedWord1,
-                word2: selectedWord2,
-                content: ideaContent
-            });
+        if (!selectedWord1 || !selectedWord2 || !ideaInput.value.trim()) {
+            return;
         }
         
-        // サーバーにアイデアを保存
-        saveIdeaToServer();
+        const newIdea = {
+            word1: selectedWord1,
+            word2: selectedWord2,
+            idea: ideaInput.value.trim()
+        };
+        
+        // 既存のアイデアがあるか検索
+        const existingIndex = ideaBank.ideas.findIndex(item => 
+            (item.word1 === selectedWord1 && item.word2 === selectedWord2) ||
+            (item.word1 === selectedWord2 && item.word2 === selectedWord1)
+        );
+        
+        if (existingIndex !== -1) {
+            // 既存のアイデアを更新
+            ideaBank.ideas[existingIndex] = newIdea;
+        } else {
+            // 新しいアイデアを追加
+            ideaBank.ideas.push(newIdea);
+        }
+        
+        // アイデア帳を保存
+        saveIdeaBankToServer();
+        
+        showStatusMessage('アイデアが保存されました！', true);
     }
     
-    // サーバーにアイデアを保存
-    function saveIdeaToServer() {
-        // 保存中の状態を表示
-        saveButton.disabled = true;
-        saveButton.textContent = '保存中...';
+    // ステータスメッセージを表示
+    function showStatusMessage(message, isSuccess) {
+        statusMessageContainer.textContent = message;
+        statusMessageContainer.style.backgroundColor = isSuccess ? '#4CAF50' : '#F44336';
+        statusMessageContainer.style.display = 'block';
         
-        fetch('/api/save-idea', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(ideaBank)
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('サーバーエラー: ' + response.status);
-            }
-            return response.json();
-        })
-        .then(data => {
-            // 保存成功
-            showStatusMessage('アイデアが保存されました！', true);
-            saveButton.textContent = 'アイデアを保存';
-            saveButton.disabled = false;
-        })
-        .catch(error => {
-            console.error('保存エラー:', error);
-            
-            // エラーメッセージを表示
-            showStatusMessage('保存に失敗しました。ローカルに保存します。', false);
-            
-            // ローカルストレージに保存（フォールバック）
-            localStorage.setItem('ideaBank', JSON.stringify(ideaBank));
-            
-            saveButton.textContent = 'アイデアを保存';
-            saveButton.disabled = false;
-        });
+        // 3秒後にメッセージを非表示
+        setTimeout(() => {
+            statusMessageContainer.style.display = 'none';
+        }, 3000);
     }
 });
