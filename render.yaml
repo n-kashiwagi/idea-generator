@@ -1,0 +1,5 @@
+# Render.com用のデプロイ設定
+engines:
+  node: "18.x"
+buildCommand: npm install
+startCommand: node server.js

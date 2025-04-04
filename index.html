@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アイデアジェネレーター</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>アイデアジェネレーター</h1>
+        
+        <div class="idea-generator">
+            <div class="word-selection">
+                <div class="word-box">
+                    <div id="word1" class="word-display">単語１</div>
+                    <div class="word-buttons">
+                        <button id="random1" class="btn btn-random">ランダム</button>
+                        <button id="clear1" class="btn btn-clear">解除</button>
+                    </div>
+                </div>
+                
+                <div class="operator">×</div>
+                
+                <div class="word-box">
+                    <div id="word2" class="word-display">単語２</div>
+                    <div class="word-buttons">
+                        <button id="random2" class="btn btn-random">ランダム</button>
+                        <button id="clear2" class="btn btn-clear">解除</button>
+                    </div>
+                </div>
+                
+                <div class="operator">=</div>
+            </div>
+            
+            <div class="idea-input-container">
+                <textarea id="ideaInput" class="idea-input" placeholder="アイデアを入力してください..." disabled></textarea>
+                <button id="saveIdea" class="save-btn" disabled>アイデアを保存</button>
+            </div>
+        </div>
+        
+        <div class="word-bank">
+            <h2>単語帳</h2>
+            <div class="tabs">
+                <div class="tab active" data-category="Will">Will</div>
+                <div class="tab" data-category="Must">Must</div>
+                <div class="tab" data-category="PEST">PEST</div>
+            </div>
+            
+            <div id="wordLists">
+                <div id="willWords" class="word-list"></div>
+                <div id="mustWords" class="word-list hidden"></div>
+                <div id="pestWords" class="word-list hidden"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="js/app.js"></script>
+</body>
+</html>
